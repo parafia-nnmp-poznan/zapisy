@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Zapisy">
+  <rect width="512" height="512" rx="96" fill="#1f5fae"/>
+  <rect x="116" y="128" width="280" height="272" rx="28" fill="#ffffff"/>
+  <rect x="116" y="128" width="280" height="64" rx="28" fill="#dfe9f7"/>
+  <rect x="116" y="164" width="280" height="28" fill="#dfe9f7"/>
+  <rect x="164" y="96" width="24" height="64" rx="12" fill="#ffffff"/>
+  <rect x="324" y="96" width="24" height="64" rx="12" fill="#ffffff"/>
+  <path d="M168 276l36 36 76-80" fill="none" stroke="#1f5fae" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="300" y="268" width="56" height="16" rx="8" fill="#9db7dd"/>
+  <rect x="300" y="308" width="56" height="16" rx="8" fill="#9db7dd"/>
+</svg>
