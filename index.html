@@ -2,163 +2,71 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Test połączenia – zapisy</title>
-<style>
-  :root { --bg:#f6f4ef; --card:#fff; --text:#1d1d1f; --muted:#5b5b60; --border:#d9d6cf;
-          --ok:#1e7a3c; --ok-bg:#e3f4e8; --bad:#b3261e; --bad-bg:#fbe6e4; --accent:#1f5fae; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#17181a; --card:#222427; --text:#f1f1f1; --muted:#a9a9ae; --border:#3a3d42;
-            --ok:#7fd69a; --ok-bg:#1b3325; --bad:#ff8a80; --bad-bg:#3a1f1d; --accent:#6aa6ee; }
-  }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text);
-         font:18px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  main { max-width:640px; margin:0 auto; padding:16px; }
-  h1 { font-size:24px; margin:8px 0; }
-  p { margin:8px 0; }
-  .muted { color:var(--muted); font-size:16px; }
-  label { display:block; font-weight:600; margin:16px 0 4px; }
-  input { width:100%; font:inherit; padding:12px; border-radius:10px; border:1px solid var(--border);
-          background:var(--card); color:var(--text); }
-  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-  button, a.btn { min-height:48px; padding:0 18px; font:inherit; border-radius:10px; cursor:pointer;
-                  border:1px solid var(--border); background:var(--card); color:var(--text);
-                  display:inline-flex; align-items:center; text-decoration:none; }
-  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
-  #result { margin-top:20px; padding:16px; border-radius:12px; border:1px solid var(--border);
-            background:var(--card); display:none; }
-  #result.ok { display:block; background:var(--ok-bg); border-color:var(--ok); }
-  #result.bad { display:block; background:var(--bad-bg); border-color:var(--bad); }
-  #verdict { font-size:26px; font-weight:700; margin:0; }
-  #result.ok #verdict { color:var(--ok); }
-  #result.bad #verdict { color:var(--bad); }
-  pre { white-space:pre-wrap; word-break:break-word; font-size:14px; margin:12px 0 0;
-        padding:10px; border-radius:8px; background:rgba(127,127,127,.12); }
-  ul { padding-left:20px; margin:8px 0; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fae">
+<meta name="description" content="Zapisy na czytania, psalm, modlitwę powszechną i procesję z darami.">
+<title>Zapisy na posługi</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="progress" id="progress" hidden><div class="progress-bar"></div></div>
+
+<header class="page-header">
+  <h1>Zapisy na posługi liturgiczne</h1>
+  <p class="subtitle" id="mode"></p>
+</header>
+
+<div class="toolbar-wrap">
+  <div class="toolbar" role="toolbar" aria-label="Akcje">
+    <button type="button" class="btn" id="btnRefresh">Odśwież</button>
+    <button type="button" class="btn" id="btnPrint">Drukuj</button>
+    <button type="button" class="btn" id="btnMode">Tryb zakrystii</button>
+  </div>
+</div>
+
 <main>
-  <h1>Test połączenia z arkuszem</h1>
-  <p class="muted">Ta strona pobiera listę Mszy z aplikacji Apps Script <b>bez ciasteczek Google</b>. Jeśli działa na telefonie, na którym zwykły link pokazuje błąd, to rozwiązanie z GitHub Pages ma sens.</p>
+  <div id="banner" class="banner" role="status" hidden></div>
 
-  <label for="url">Adres aplikacji (kończy się na /exec)</label>
-  <input id="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-         placeholder="https://script.google.com/macros/s/.../exec">
+  <section class="filters" aria-label="Filtry listy">
+    <div class="field">
+      <label for="fDate">Data</label>
+      <select id="fDate"></select>
+    </div>
+    <div class="field">
+      <label for="fTime">Godzina</label>
+      <select id="fTime"></select>
+    </div>
+    <div class="field field-wide">
+      <label for="fPerson">Osoba</label>
+      <input id="fPerson" type="search" placeholder="Imię lub nazwisko" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <div class="filters-footer">
+      <label class="check"><input type="checkbox" id="fFree"> Tylko wolne miejsca</label>
+      <button type="button" class="btn small" id="btnClear" hidden>Wyczyść filtry</button>
+      <span class="muted" id="count" aria-live="polite"></span>
+    </div>
+  </section>
 
-  <div class="row">
-    <button class="primary" id="run" type="button">Testuj</button>
-    <a class="btn" id="direct" href="#" target="_blank" rel="noopener">Otwórz adres bezpośrednio (porównanie)</a>
-  </div>
-
-  <div id="result" role="status" aria-live="polite">
-    <p id="verdict"></p>
-    <div id="summary"></div>
-    <pre id="details"></pre>
-  </div>
+  <div id="list"></div>
 </main>
 
-<script>
-(function () {
-  'use strict';
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  // Optionally paste the /exec URL here before uploading, so you do not have to type it on the phone.
-  // The URL is not secret (anyone with the app link has it), but the repository is public.
-  var API_URL = 'https://script.google.com/macros/s/AKfycbxvCC7TqwVtZArHkFC82ok07khC5m1552hrXqZdfuMS7m8sNL39SctIf2hEWyrmWeW0/exec';
+<div class="overlay" id="overlay">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <h2 id="dialogTitle"></h2>
+    <div id="dialogBody"></div>
+    <p class="dialog-status" id="dialogStatus" role="status" aria-live="polite"></p>
+    <div class="buttons" id="dialogButtons"></div>
+  </div>
+</div>
 
-  var $ = function (id) { return document.getElementById(id); };
-  var store = {
-    get: function (k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
-    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-  };
+<noscript><p class="banner">Do działania aplikacji potrzebny jest JavaScript.</p></noscript>
 
-  var initial = (API_URL.indexOf('http') === 0) ? API_URL : store.get('apiUrl');
-  $('url').value = initial;
-  updateDirectLink();
-  $('url').addEventListener('input', updateDirectLink);
-  $('run').addEventListener('click', run);
-
-  function updateDirectLink() { $('direct').href = $('url').value.trim() || '#'; }
-
-  function text(el, value) { el.textContent = value; }
-
-  function show(ok, verdict, lines, details) {
-    var box = $('result');
-    box.className = ok ? 'ok' : 'bad';
-    text($('verdict'), verdict);
-    var s = $('summary');
-    s.textContent = '';
-    if (lines.length) {
-      var ul = document.createElement('ul');
-      lines.forEach(function (l) { var li = document.createElement('li'); li.textContent = l; ul.appendChild(li); });
-      s.appendChild(ul);
-    }
-    text($('details'), details);
-  }
-
-  function env() {
-    return 'Przeglądarka: ' + navigator.userAgent + '\nOnline: ' + navigator.onLine +
-           '\nStrona: ' + location.href;
-  }
-
-  async function run() {
-    var base = $('url').value.trim();
-    if (base.indexOf('http') !== 0) {
-      show(false, 'Wpisz adres', ['Wklej adres aplikacji (kończy się na /exec).'], env());
-      return;
-    }
-    store.set('apiUrl', base);
-
-    var warnings = [];
-    if (/\/dev(\?|$)/.test(base)) warnings.push('Adres kończy się na /dev (wersja testowa). Użyj adresu /exec.');
-    if (/\/u\/\d+\//.test(base)) warnings.push('W adresie jest numer konta (/u/0/, /u/1/). Skopiuj adres z okna wdrożenia.');
-    if (/\/a\/macros\//.test(base)) warnings.push('Adres zawiera /a/macros/ (konto organizacji). Publiczny dostęp może być zablokowany.');
-
-    var url = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'action=getData&_=' + Date.now();
-    $('run').disabled = true;
-    show(true, 'Trwa test…', [], env());
-    $('result').className = 'ok';
-    var started = performance.now();
-
-    try {
-      var res = await fetch(url, { method: 'GET', credentials: 'omit', redirect: 'follow', cache: 'no-store' });
-      var ms = Math.round(performance.now() - started);
-      var body = await res.text();
-      var data = null;
-      try { data = JSON.parse(body); } catch (e) { data = null; }
-
-      if (!res.ok) {
-        show(false, 'BŁĄD: odpowiedź HTTP ' + res.status,
-          warnings.concat(['Serwer odpowiedział, ale z błędem.']), env() + '\n\nOdpowiedź (początek):\n' + body.slice(0, 300));
-      } else if (!data) {
-        show(false, 'BŁĄD: to nie jest lista Mszy',
-          warnings.concat(['Google zwrócił stronę HTML zamiast danych (np. błąd, logowanie albo brak wdrożenia z działającym kodem).',
-                           'Sprawdź, czy wdrożyłeś NOWĄ WERSJĘ z poprawionym doGet i dostępem „Wszyscy”.']),
-          env() + '\n\nOdpowiedź (początek):\n' + body.slice(0, 300));
-      } else if (data.fatal) {
-        show(false, 'BŁĄD po stronie skryptu', warnings, env() + '\n\n' + data.fatal);
-      } else if (!Array.isArray(data.masses)) {
-        show(false, 'BŁĄD: nieoczekiwana odpowiedź', warnings, env() + '\n\n' + body.slice(0, 300));
-      } else {
-        var lines = warnings.slice();
-        lines.push('Czas odpowiedzi: ' + ms + ' ms');
-        lines.push('Liczba Mszy na liście: ' + data.masses.length);
-        data.masses.slice(0, 3).forEach(function (m) {
-          var taken = m.slots.filter(function (s) { return s.taken; }).length;
-          lines.push(m.weekday + ' ' + m.date + ' ' + m.time + ' – zajętych miejsc: ' + taken + '/' + m.slots.length);
-        });
-        show(true, 'DZIAŁA ✔', lines, env());
-      }
-    } catch (e) {
-      show(false, 'BŁĄD: zapytanie zablokowane',
-        warnings.concat(['Przeglądarka nie dostała odpowiedzi. Zwykle to zły adres, brak internetu albo Google zwrócił stronę błędu bez zgody na odczyt.']),
-        env() + '\n\n' + (e && e.name) + ': ' + (e && e.message));
-    } finally {
-      $('run').disabled = false;
-    }
-  }
-})();
-</script>
+<script src="config.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
