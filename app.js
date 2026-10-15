@@ -1,5 +1,5 @@
 /*
- * Liturgical ministry sign-ups: front end (GitHub Pages).
+ * Zapisy na posługi liturgiczne – Parafia Nawiedzenia NMP w Poznaniu: front end (GitHub Pages).
  * Talks to the Apps Script web app (see config.js) using JSON over POST with a text/plain body.
  * All user-supplied text is inserted with textContent (never innerHTML).
  * UI texts are in Polish on purpose; identifiers are in English.
@@ -7,9 +7,15 @@
 (function () {
   'use strict';
 
+  var APP_VERSION = '2.0';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;
+  var RETENTION_DAYS = CONFIG.RETENTION_DAYS || 30;   // only for the texts; the real clean-up runs in the Apps Script
+  var FEEDBACK_MAX = 1000;
+
+  var MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+  var MONTHS_SHORT = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
 
   // ------------------------------------------------------------ small helpers
   var $ = function (id) { return document.getElementById(id); };
@@ -33,15 +39,32 @@
     return String(s || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
+  function pad2(n) { return ('0' + n).slice(-2); }
+  function isoOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function todayIso() { return isoOf(new Date()); }
+  function tomorrowIso() { var d = new Date(); d.setDate(d.getDate() + 1); return isoOf(d); }
+  function parseIso(iso) { var p = iso.split('-'); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); }
   function formatDate(iso) { var p = iso.split('-'); return p[2] + '.' + p[1]; }
-  function todayIso() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
-  function clock(ts) { var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function clock(ts) { var d = new Date(ts); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+  function capitalize(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function applyRetention(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-retention]'), function (n) { n.textContent = String(RETENTION_DAYS); });
+  }
+
+  function randomId() {
+    var a = new Uint8Array(12), i;
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(a);
+    else for (i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256);
+    return Array.prototype.map.call(a, function (b) { return pad2(b.toString(16)); }).join('');
+  }
 
   // ------------------------------------------------------------ state
   var pin = store.get('pin', '');                 // sacristy PIN; empty = normal visitor
   var savedName = store.get('name', '');          // last name used for self-service sign-up
   var myIds = [];                                 // ids of sign-ups made in this browser
   try { myIds = JSON.parse(store.get('myIds', '[]')); if (!Array.isArray(myIds)) myIds = []; } catch (e) { myIds = []; }
+  var clientIdValue = '';                         // random id of this browser; only used to rate-limit problem reports
   var data = null;                                // last payload: { masses: [...], sacristy: bool }
   var updatedAt = 0;                              // when `data` was fetched (ms)
   var fromCache = false;                          // `data` came from localStorage, not from the server
@@ -49,9 +72,18 @@
   var pending = 0;                                // number of requests in flight (drives the progress bar)
   var dialogOpen = false;
   var dialogBusy = false;
+  var lastFocus = null;                           // element to give the focus back to when a dialog closes
   var filters = { date: '', time: '', person: '', free: false };
 
   function saveMyIds() { store.set('myIds', JSON.stringify(myIds)); }
+
+  function clientId() {
+    if (clientIdValue) return clientIdValue;
+    var v = store.get('clientId', '');
+    if (!/^[A-Za-z0-9_-]{8,64}$/.test(v)) { v = randomId(); store.set('clientId', v); }
+    clientIdValue = v;
+    return v;
+  }
 
   // ------------------------------------------------------------ API
   function configured() { return typeof CONFIG.API_URL === 'string' && /^https:\/\//.test(CONFIG.API_URL); }
@@ -60,6 +92,8 @@
     pending = Math.max(0, pending + delta);
     $('progress').hidden = pending === 0;
   }
+
+  function userError(message) { var e = new Error(message); e.user = true; return e; }
 
   /** POST { action, ...payload } and resolve with `data`; reject with an Error carrying a Polish message. */
   function api(action, payload) {
@@ -89,8 +123,6 @@
       throw userError('Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.');
     });
   }
-
-  function userError(message) { var e = new Error(message); e.user = true; return e; }
 
   // ------------------------------------------------------------ banner and toast
   function showBanner(text, warn, withRetry) {
@@ -138,7 +170,7 @@
     return null;
   }
 
-  /** opts.fresh: bypass the server cache (after a change / manual refresh). opts.quiet: no loading panel. */
+  /** opts.fresh: bypass the server cache (after a change / manual refresh). opts.manual: show "Odświeżam…" on the button. */
   function loadData(opts) {
     opts = opts || {};
     var seq = ++requestSeq;
@@ -202,11 +234,9 @@
     $('count').textContent = '';
   }
 
-  function optionsSignature(values) { return values.join('|'); }
-
   /** Rebuilds a <select> only when its option set changed (so an open dropdown is not disturbed). */
   function fillSelect(select, firstLabel, options, current) {
-    var signature = optionsSignature(options.map(function (o) { return o.value + '=' + o.label; }));
+    var signature = options.map(function (o) { return o.value + '=' + o.label; }).join('|');
     if (select.getAttribute('data-sig') !== signature) {
       select.textContent = '';
       var all = el('option', '', firstLabel); all.value = ''; select.appendChild(all);
@@ -221,7 +251,7 @@
   function updateFilterOptions() {
     var dates = [], times = [], seenD = {}, seenT = {};
     data.masses.forEach(function (m) {
-      if (!seenD[m.date]) { seenD[m.date] = true; dates.push({ value: m.date, label: m.weekday + ' ' + formatDate(m.date) }); }
+      if (!seenD[m.date]) { seenD[m.date] = true; dates.push({ value: m.date, label: capitalize(m.weekday) + ' ' + formatDate(m.date) }); }
       if (!seenT[m.time]) { seenT[m.time] = true; times.push({ value: m.time, label: m.time }); }
     });
     times.sort(function (a, b) { return a.value < b.value ? -1 : 1; });
@@ -231,22 +261,38 @@
 
   function filtersActive() { return !!(filters.date || filters.time || filters.person.trim() || filters.free); }
 
+  function updateFilterUi() {
+    var hidden = (filters.date ? 1 : 0) + (filters.time ? 1 : 0) + (filters.free ? 1 : 0);   // filters inside the collapsible panel
+    var badge = $('filterBadge');
+    badge.hidden = !hidden;
+    badge.textContent = String(hidden);
+    $('btnClear').hidden = !filtersActive();
+  }
+
+  function renderMode(sacristy) {
+    var m = $('mode');
+    m.textContent = '';
+    if (sacristy) {
+      m.appendChild(el('span', 'pill-mode', 'Tryb zakrystii'));
+      m.appendChild(document.createTextNode('możesz dopisywać, edytować i usuwać wszystkie wpisy.'));
+    } else {
+      m.textContent = 'Wybierz wolne miejsce i naciśnij „Zapisz się”.';
+    }
+  }
+
   function render() {
     var sacristy = !!data.sacristy;
     document.body.classList.toggle('sacristy', sacristy);
-    $('mode').textContent = sacristy
-      ? 'Tryb zakrystii: możesz dopisywać, edytować i usuwać wszystkie wpisy.'
-      : 'Wybierz wolne miejsce i naciśnij „Zapisz się”.';
+    renderMode(sacristy);
     $('btnMode').textContent = sacristy ? 'Wyłącz tryb zakrystii' : 'Tryb zakrystii';
     if (fromCache) showBanner('Pokazuję dane zapisane w urządzeniu z godz. ' + clock(updatedAt) + '. Trwa aktualizacja…', true);
 
     updateFilterOptions();
-    $('btnClear').hidden = !filtersActive();
+    updateFilterUi();
 
     var needle = normalize(filters.person.trim());
     var shown = 0;
-    var list = $('list');
-    list.textContent = '';
+    var groups = [], current = null;
 
     data.masses.forEach(function (mass) {
       if (filters.date && mass.date !== filters.date) return;
@@ -257,21 +303,59 @@
         return true;
       });
       if (!slots.length) return;
+      if (!current || current.date !== mass.date) { current = { date: mass.date, weekday: mass.weekday, items: [] }; groups.push(current); }
+      current.items.push({ mass: mass, slots: slots });
       shown++;
-      list.appendChild(renderMass(mass, slots, sacristy, !!needle));
     });
 
+    var list = $('list');
+    list.textContent = '';
+    groups.forEach(function (g) { list.appendChild(renderDay(g, sacristy, !!needle)); });
     if (!shown) {
       list.appendChild(el('p', 'empty', data.masses.length ? 'Brak wyników dla wybranych filtrów.' : 'Brak terminów. Koordynator musi wygenerować terminy w arkuszu.'));
     }
-    $('count').textContent = data.masses.length ? 'Pokazano ' + shown + ' z ' + data.masses.length + ' Mszy' : '';
+    $('count').textContent = data.masses.length ? 'Msze: ' + shown + ' z ' + data.masses.length : '';
+  }
+
+  function renderDay(group, sacristy, highlight) {
+    var d = parseIso(group.date);
+    var section = el('div', 'day');
+    section.setAttribute('role', 'group');
+    section.setAttribute('data-wd', String(d.getDay()));
+    var headingId = 'day-' + group.date;
+    section.setAttribute('aria-labelledby', headingId);
+
+    var head = el('div', 'day-head');
+    var badge = el('div', 'day-badge');
+    badge.setAttribute('aria-hidden', 'true');
+    badge.appendChild(el('span', 'day-num', String(d.getDate())));
+    badge.appendChild(el('span', 'day-mon', MONTHS_SHORT[d.getMonth()]));
+    var titles = el('div', 'day-title');
+    var h2 = el('h2', '', capitalize(group.weekday));
+    h2.id = headingId;
+    titles.appendChild(h2);
+    titles.appendChild(el('div', 'day-date', d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear()));
+    head.appendChild(badge);
+    head.appendChild(titles);
+    if (group.date === todayIso()) head.appendChild(el('span', 'day-tag', 'Dziś'));
+    else if (group.date === tomorrowIso()) head.appendChild(el('span', 'day-tag', 'Jutro'));
+    section.appendChild(head);
+
+    var grid = el('div', 'day-grid');
+    group.items.forEach(function (item) { grid.appendChild(renderMass(item.mass, item.slots, sacristy, highlight)); });
+    section.appendChild(grid);
+    return section;
   }
 
   function renderMass(mass, slots, sacristy, highlight) {
-    var card = el('section', 'card');
-    card.appendChild(el('h2', '', mass.weekday + ', ' + formatDate(mass.date) + ' – godz. ' + mass.time));
-    if (mass.description) card.appendChild(el('div', 'description', mass.description));
     var where = mass.weekday + ' ' + formatDate(mass.date) + ' godz. ' + mass.time;
+    var card = el('div', 'card');
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'Msza: ' + where);
+    var head = el('div', 'card-head');
+    head.appendChild(el('h3', 'mass-time', mass.time));
+    if (mass.description) head.appendChild(el('span', 'description', mass.description));
+    card.appendChild(head);
 
     slots.forEach(function (slot) {
       var row = el('div', 'slot' + (highlight && slot.taken ? ' match' : ''));
@@ -289,6 +373,7 @@
       } else {
         var name = el('span', 'name', slot.name);
         if (sacristy && slot.phone) name.appendChild(el('span', 'phone', ' · ' + slot.phone));
+        if (!sacristy && slot.mine) name.appendChild(el('span', 'me', 'Twój zapis'));
         info.appendChild(name);
         if (sacristy) {
           var actions = el('div', 'actions');
@@ -324,9 +409,15 @@
   }
 
   // ------------------------------------------------------------ dialog
+  var TEXT_INPUTS = 'input[type="text"], input[type="tel"], input[type="password"]';
+
   function closeDialog() {
     $('overlay').classList.remove('open');
+    $('dialog').classList.remove('wide');
+    document.body.classList.remove('modal-open');
     dialogOpen = false; dialogBusy = false;
+    var back = lastFocus; lastFocus = null;
+    if (back && document.body.contains(back) && typeof back.focus === 'function') { try { back.focus(); } catch (e) {} }
   }
 
   function setDialogStatus(text, isError) {
@@ -336,11 +427,18 @@
   }
 
   /**
-   * buttons: [{ text, className, pendingText, action: () => Promise }]; a button without `action` just closes.
+   * buttons: [{ text, className, pendingText, action: () => Promise, onClick: () => void }]
+   *   action  – async work; the dialog closes when it resolves, shows the error when it rejects
+   *   onClick – plain handler, the dialog is NOT closed by it (use it to switch to another dialog)
+   *   neither – the button just closes the dialog
    * While an action runs, all buttons are disabled and the clicked one shows a spinner and `pendingText`.
+   * opts.wide – wider dialog (for the long information texts).
    */
-  function openDialog(title, content, buttons) {
+  function openDialog(title, content, buttons, opts) {
+    opts = opts || {};
+    if (!dialogOpen) lastFocus = document.activeElement;
     $('dialogTitle').textContent = title;
+    $('dialog').classList.toggle('wide', !!opts.wide);
     var body = $('dialogBody');
     body.textContent = '';
     if (content) body.appendChild(content);
@@ -352,9 +450,10 @@
     buttons.forEach(function (def) {
       var b = el('button', 'btn ' + (def.className || ''), def.text);
       b.type = 'button';
-      if (/primary|danger/.test(def.className || '') && !primary) primary = b;
+      if (/primary|danger/.test(def.className || '') && def.action && !primary) primary = b;
       b.onclick = function () {
         if (dialogBusy) return;
+        if (def.onClick) { def.onClick(); return; }
         if (!def.action) { closeDialog(); return; }
         var all = bar.querySelectorAll('button');
         Array.prototype.forEach.call(all, function (x) { x.disabled = true; });
@@ -375,19 +474,33 @@
       bar.appendChild(b);
     });
 
-    // Enter in a text field confirms the dialog
-    Array.prototype.forEach.call(body.querySelectorAll('input'), function (input) {
+    // Enter in a one-line field confirms the dialog (not in the multi-line text box)
+    Array.prototype.forEach.call(body.querySelectorAll(TEXT_INPUTS), function (input) {
       input.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && primary) { ev.preventDefault(); primary.click(); } });
     });
 
     $('overlay').classList.add('open');
+    document.body.classList.add('modal-open');
     dialogOpen = true;
-    var first = body.querySelector('input');
-    if (first) first.focus();
+    $('dialog').scrollTop = 0;
+    var first = body.querySelector('textarea, ' + TEXT_INPUTS);
+    (first || $('dialog')).focus();
   }
 
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && dialogOpen && !dialogBusy) closeDialog(); });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    if (dialogOpen && !dialogBusy) closeDialog();
+    else setMore(false);
+  });
   $('overlay').addEventListener('mousedown', function (ev) { if (ev.target === $('overlay') && !dialogBusy) closeDialog(); });
+  $('overlay').addEventListener('keydown', function (ev) {   // keep Tab inside the dialog
+    if (ev.key !== 'Tab' || !dialogOpen) return;
+    var items = $('dialog').querySelectorAll('button:not([disabled]), input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled])');
+    if (!items.length) return;
+    var first = items[0], last = items[items.length - 1];
+    if (ev.shiftKey && (document.activeElement === first || document.activeElement === $('dialog'))) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+  });
 
   function field(label, type, value, options) {
     options = options || {};
@@ -403,11 +516,32 @@
     return { wrap: wrap, input: input };
   }
 
-  function massSummary(mass, slot) {
-    return el('p', '', mass.weekday + ', ' + formatDate(mass.date) + ', godz. ' + mass.time + ' – ' + slot.role);
+  function area(label, options) {
+    options = options || {};
+    var wrap = el('div', 'field');
+    var id = 'f' + Math.random().toString(36).slice(2, 8);
+    var l = el('label', '', label); l.setAttribute('for', id);
+    var input = document.createElement('textarea');
+    input.id = id; input.rows = options.rows || 5; input.maxLength = options.max || 1000;
+    if (options.placeholder) input.placeholder = options.placeholder;
+    wrap.appendChild(l); wrap.appendChild(input);
+    return { wrap: wrap, input: input };
   }
 
-  // ------------------------------------------------------------ actions
+  function radio(label, value, checked) {
+    var wrap = el('label', 'radio');
+    var input = document.createElement('input');
+    input.type = 'radio'; input.name = 'kind'; input.value = value; input.checked = !!checked;
+    wrap.appendChild(input);
+    wrap.appendChild(document.createTextNode(label));
+    return { wrap: wrap, input: input };
+  }
+
+  function massSummary(mass, slot) {
+    return el('p', '', capitalize(mass.weekday) + ', ' + formatDate(mass.date) + ', godz. ' + mass.time + ' – ' + slot.role);
+  }
+
+  // ------------------------------------------------------------ actions on sign-ups
   function openSignup(mass, slot) {
     var sacristy = !!data.sacristy;
     var content = el('div');
@@ -416,6 +550,11 @@
     content.appendChild(name.wrap);
     var phone = null;
     if (sacristy) { phone = field('Telefon (opcjonalnie)', 'tel', '', { max: 20 }); content.appendChild(phone.wrap); }
+    var note = el('p', 'note', 'Imię i nazwisko będą widoczne na liście. Dane usuwamy automatycznie, najpóźniej ');
+    var days = el('span', '', String(RETENTION_DAYS));
+    note.appendChild(days);
+    note.appendChild(document.createTextNode(' dni po terminie Mszy.'));
+    content.appendChild(note);
 
     openDialog('Zapis na posługę', content, [
       { text: 'Zapisz', className: 'primary', pendingText: 'Zapisuję…', action: function () {
@@ -506,11 +645,119 @@
     ]);
   }
 
-  // ------------------------------------------------------------ wiring
-  $('btnRefresh').onclick = function () { loadData({ fresh: true, manual: true }); };
-  $('btnPrint').onclick = function () { window.print(); };
-  $('btnMode').onclick = toggleSacristyMode;
+  // ------------------------------------------------------------ information dialogs and problem reports
+  function infoContent(templateId) {
+    var wrap = el('div', 'prose');
+    wrap.appendChild($(templateId).content.cloneNode(true));
+    applyRetention(wrap);
+    return wrap;
+  }
 
+  function openHelp() {
+    openDialog('Jak korzystać z aplikacji', infoContent('tplHelp'), [
+      { text: 'Zgłoś problem lub pomysł', onClick: function () { closeDialog(); openFeedback(); } },
+      { text: 'Zamknij', className: 'primary' }
+    ], { wide: true });
+  }
+
+  function openPrivacy() {
+    var content = infoContent('tplPrivacy');
+    if (CONFIG.PRIVACY_CONTACT) {
+      var p = el('p');
+      p.appendChild(el('strong', '', 'Kontakt w sprawie danych: '));
+      p.appendChild(document.createTextNode(String(CONFIG.PRIVACY_CONTACT)));
+      content.appendChild(p);
+    }
+    openDialog('Informacja o danych (RODO)', content, [{ text: 'Zamknij', className: 'primary' }], { wide: true });
+  }
+
+  function openFeedback() {
+    var content = el('div');
+    content.appendChild(el('p', 'note', 'Napisz, co nie działa albo co można ulepszyć. Zgłoszenie zostanie wysłane e-mailem do twórcy aplikacji.'));
+
+    var fs = el('fieldset', 'kind');
+    fs.appendChild(el('legend', '', 'Rodzaj zgłoszenia'));
+    var radios = el('div', 'radios');
+    var rProblem = radio('Problem', 'problem', true);
+    var rIdea = radio('Pomysł', 'idea', false);
+    radios.appendChild(rProblem.wrap); radios.appendChild(rIdea.wrap);
+    fs.appendChild(radios);
+    content.appendChild(fs);
+
+    var message = area('Opis', { max: FEEDBACK_MAX, rows: 5 });
+    var counter = el('div', 'counter', '0 / ' + FEEDBACK_MAX);
+    message.input.addEventListener('input', function () { counter.textContent = message.input.value.length + ' / ' + FEEDBACK_MAX; });
+    message.wrap.appendChild(counter);
+    content.appendChild(message.wrap);
+
+    var contact = field('Kontakt (opcjonalnie)', 'text', '', { max: 100 });
+    contact.input.autocomplete = 'off';
+    contact.input.placeholder = 'E-mail lub telefon, jeśli chcesz odpowiedź';
+    content.appendChild(contact.wrap);
+
+    // honeypot: invisible for people, bots tend to fill it
+    var hp = el('div', 'hp');
+    hp.setAttribute('aria-hidden', 'true');
+    var hpLabel = el('label', '', 'Nie wypełniaj tego pola');
+    var hpInput = document.createElement('input');
+    hpInput.type = 'text'; hpInput.name = 'website'; hpInput.tabIndex = -1; hpInput.autocomplete = 'off';
+    hpLabel.appendChild(hpInput); hp.appendChild(hpLabel);
+    content.appendChild(hp);
+
+    content.appendChild(el('p', 'note', 'Podanie kontaktu jest dobrowolne. Zgłoszenia nie są zapisywane na liście zapisów.'));
+
+    openDialog('Zgłoś problem lub pomysł', content, [
+      { text: 'Wyślij', className: 'primary', pendingText: 'Wysyłam…', action: function () {
+        var text = message.input.value.trim();
+        if (text.length < 5) return Promise.reject(new Error('Opisz krótko, czego dotyczy zgłoszenie (co najmniej 5 znaków).'));
+        return api('sendFeedback', {
+          kind: rIdea.input.checked ? 'idea' : 'problem',
+          message: text,
+          contact: contact.input.value.trim(),
+          website: hpInput.value,
+          clientId: clientId(),
+          mode: data && data.sacristy ? 'zakrystia' : 'parafianin',
+          ua: String(navigator.userAgent || '').slice(0, 200),
+          appVersion: APP_VERSION
+        }).then(function () {
+          toast('Dziękujemy! Zgłoszenie zostało wysłane ✔');
+        });
+      } },
+      { text: 'Anuluj' }
+    ]);
+  }
+
+  // ------------------------------------------------------------ toolbar menu and filters
+  function setMore(open) {
+    $('moreMenu').classList.toggle('open', open);
+    $('btnMore').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function menuAction(fn) { return function () { setMore(false); fn(); }; }
+
+  function setFiltersOpen(open) {
+    $('filters').classList.toggle('open', open);
+    $('btnFilters').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  // ------------------------------------------------------------ wiring
+  applyRetention(document);
+
+  $('btnRefresh').onclick = function () { loadData({ fresh: true, manual: true }); };
+  $('btnHelp').onclick = openHelp;
+  $('btnMore').onclick = function (ev) { ev.stopPropagation(); setMore(!$('moreMenu').classList.contains('open')); };
+  $('btnPrint').onclick = menuAction(function () { window.print(); });
+  $('btnFeedback').onclick = menuAction(openFeedback);
+  $('btnMode').onclick = menuAction(toggleSacristyMode);
+  document.addEventListener('click', function (ev) {
+    if (!$('moreMenu').contains(ev.target) && ev.target !== $('btnMore')) setMore(false);
+  });
+
+  $('lnkHelp').onclick = openHelp;
+  $('lnkPrivacy').onclick = openPrivacy;
+  $('lnkFeedback').onclick = openFeedback;
+
+  $('btnFilters').onclick = function () { setFiltersOpen(!$('filters').classList.contains('open')); };
   $('fDate').onchange = function () { filters.date = this.value; if (data) render(); };
   $('fTime').onchange = function () { filters.time = this.value; if (data) render(); };
   $('fPerson').oninput = function () { filters.person = this.value; if (data) render(); };

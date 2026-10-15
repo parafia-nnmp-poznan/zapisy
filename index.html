@@ -3,9 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f5fae">
-<meta name="description" content="Zapisy na czytania, psalm, modlitwę powszechną i procesję z darami.">
-<title>Zapisy na posługi</title>
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1419">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f4f8">
+<meta name="description" content="Zapisy na czytania, psalm, modlitwę powszechną i procesję z darami w Parafii Nawiedzenia NMP w Poznaniu.">
+<title>Zapisy na posługi – Parafia Nawiedzenia NMP w Poznaniu</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -13,50 +15,81 @@
 </head>
 <body>
 <div class="progress" id="progress" hidden><div class="progress-bar"></div></div>
+<a class="skip-link" href="#list">Przejdź do listy Mszy</a>
 
-<header class="page-header">
-  <h1>Zapisy na posługi liturgiczne</h1>
-  <p class="subtitle" id="mode"></p>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <img class="brand-icon" src="icons/icon.svg" alt="" width="52" height="52">
+    <div class="brand-text">
+      <p class="parish">Parafia Nawiedzenia NMP w Poznaniu</p>
+      <h1>Zapisy na posługi liturgiczne</h1>
+      <p class="subtitle" id="mode"></p>
+    </div>
+  </div>
 </header>
 
 <div class="toolbar-wrap">
-  <div class="toolbar" role="toolbar" aria-label="Akcje">
+  <div class="wrap toolbar" role="toolbar" aria-label="Akcje">
+    <button type="button" class="btn btn-help" id="btnHelp">Instrukcja</button>
     <button type="button" class="btn" id="btnRefresh">Odśwież</button>
-    <button type="button" class="btn" id="btnPrint">Drukuj</button>
-    <button type="button" class="btn" id="btnMode">Tryb zakrystii</button>
+    <button type="button" class="btn more-toggle" id="btnMore" aria-expanded="false" aria-controls="moreMenu" aria-haspopup="true">Więcej</button>
+    <div class="more-menu" id="moreMenu">
+      <button type="button" class="btn" id="btnPrint">Drukuj</button>
+      <button type="button" class="btn" id="btnFeedback">Zgłoś problem lub pomysł</button>
+      <button type="button" class="btn btn-mode" id="btnMode">Tryb zakrystii</button>
+    </div>
   </div>
 </div>
 
-<main>
+<main class="wrap" id="main">
   <div id="banner" class="banner" role="status" hidden></div>
 
-  <section class="filters" aria-label="Filtry listy">
-    <div class="field">
-      <label for="fDate">Data</label>
-      <select id="fDate"></select>
+  <section class="filters" id="filters" aria-label="Wyszukiwanie i filtry">
+    <div class="filters-top">
+      <div class="field field-person">
+        <label for="fPerson">Szukaj osoby</label>
+        <input id="fPerson" type="search" placeholder="Imię lub nazwisko" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <button type="button" class="btn filters-toggle" id="btnFilters" aria-expanded="false" aria-controls="filtersMore">
+        Filtry<span class="badge" id="filterBadge" hidden></span>
+      </button>
     </div>
-    <div class="field">
-      <label for="fTime">Godzina</label>
-      <select id="fTime"></select>
-    </div>
-    <div class="field field-wide">
-      <label for="fPerson">Osoba</label>
-      <input id="fPerson" type="search" placeholder="Imię lub nazwisko" autocomplete="off" autocapitalize="off" spellcheck="false">
-    </div>
-    <div class="filters-footer">
+    <div class="filters-more" id="filtersMore">
+      <div class="field">
+        <label for="fDate">Data</label>
+        <select id="fDate"></select>
+      </div>
+      <div class="field">
+        <label for="fTime">Godzina</label>
+        <select id="fTime"></select>
+      </div>
       <label class="check"><input type="checkbox" id="fFree"> Tylko wolne miejsca</label>
-      <button type="button" class="btn small" id="btnClear" hidden>Wyczyść filtry</button>
+    </div>
+    <div class="filters-foot">
       <span class="muted" id="count" aria-live="polite"></span>
+      <button type="button" class="btn small" id="btnClear" hidden>Wyczyść filtry</button>
     </div>
   </section>
 
-  <div id="list"></div>
+  <div id="list" tabindex="-1"></div>
 </main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="footer-parish">Parafia Nawiedzenia NMP w Poznaniu</p>
+    <p class="footer-privacy">Twoje imię i nazwisko widać na liście. Dane usuwamy automatycznie, najpóźniej <span data-retention>30</span> dni po terminie Mszy.</p>
+    <p class="footer-links">
+      <button type="button" class="linkbtn" id="lnkHelp">Instrukcja</button>
+      <button type="button" class="linkbtn" id="lnkPrivacy">Informacja o danych (RODO)</button>
+      <button type="button" class="linkbtn" id="lnkFeedback">Zgłoś problem lub pomysł</button>
+    </p>
+  </div>
+</footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <div class="overlay" id="overlay">
-  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+  <div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" tabindex="-1">
     <h2 id="dialogTitle"></h2>
     <div id="dialogBody"></div>
     <p class="dialog-status" id="dialogStatus" role="status" aria-live="polite"></p>
@@ -65,6 +98,59 @@
 </div>
 
 <noscript><p class="banner">Do działania aplikacji potrzebny jest JavaScript.</p></noscript>
+
+<!-- Treści okien informacyjnych. Można je swobodnie edytować (zwykły HTML). -->
+<template id="tplHelp">
+  <h3>Jak się zapisać</h3>
+  <ol class="steps">
+    <li>Znajdź dzień i godzinę Mszy. Każdy dzień tygodnia ma swój kolor, a pod nim są Msze z tego dnia.</li>
+    <li>Przy wolnej posłudze (napis „wolne”) naciśnij <strong>Zapisz się</strong>.</li>
+    <li>Wpisz imię i nazwisko, potem naciśnij <strong>Zapisz</strong>. Nie potrzeba konta ani hasła.</li>
+    <li>Gotowe. Zobaczysz potwierdzenie, a Twoje nazwisko pojawi się na liście.</li>
+  </ol>
+
+  <h3>Nie możesz przyjść?</h3>
+  <p>Naciśnij <strong>Wypisz mnie</strong> przy swoim wpisie. Ten przycisk jest widoczny na urządzeniu, z którego się zapisałeś(-aś). Jeśli zapisywałeś(-aś) się na innym urządzeniu albo zapisała Cię zakrystia, poproś zakrystię o wypisanie.</p>
+
+  <h3>Bez telefonu lub internetu</h3>
+  <p>W zakrystii jest tablet. Zakrystia chętnie zapisze Cię na wybraną posługę.</p>
+
+  <h3>Wyszukiwanie</h3>
+  <p>Wpisz nazwisko w polu <strong>Szukaj osoby</strong>, aby zobaczyć, gdzie ktoś jest zapisany. Przycisk <strong>Filtry</strong> pozwala wybrać datę i godzinę albo pokazać tylko wolne miejsca.</p>
+
+  <h3>Dobrze wiedzieć</h3>
+  <ul class="bullets">
+    <li>Z telefonu można zapisać jedną osobę na najwyżej 4 posługi. Więcej zapisów robi zakrystia.</li>
+    <li>Lista obejmuje najbliższe 3 tygodnie i odświeża się sama. Możesz też nacisnąć <strong>Odśwież</strong>.</li>
+    <li>Aplikację można dodać do ekranu głównego telefonu. Android (Chrome): menu ⋮ → „Zainstaluj aplikację”. iPhone (Safari): „Udostępnij” → „Do ekranu początkowego”.</li>
+    <li>Coś nie działa albo masz pomysł? Użyj przycisku <strong>Zgłoś problem lub pomysł</strong>.</li>
+  </ul>
+</template>
+
+<template id="tplPrivacy">
+  <dl class="facts">
+    <dt>Administrator</dt>
+    <dd>Parafia Nawiedzenia NMP w Poznaniu.</dd>
+
+    <dt>Po co zbieramy dane</dt>
+    <dd>Wyłącznie do zorganizowania posług liturgicznych podczas Mszy Świętych: czytań, psalmu, modlitwy powszechnej i procesji z darami.</dd>
+
+    <dt>Jakie dane</dt>
+    <dd>Imię i nazwisko. Będą widoczne dla osób korzystających z aplikacji. Jeśli zapisuje Cię zakrystia, może dopisać numer telefonu, który widzi tylko zakrystia. Podanie danych jest dobrowolne, ale bez nich nie można się zapisać.</dd>
+
+    <dt>Jak długo</dt>
+    <dd>Dane usuwamy <strong>automatycznie</strong>, najpóźniej <span data-retention>30</span> dni po terminie Mszy, na którą jesteś zapisany(-a).</dd>
+
+    <dt>Twoje prawa</dt>
+    <dd>Możesz w każdej chwili usunąć swój wpis przyciskiem <strong>Wypisz mnie</strong> albo poprosić o to zakrystię. Możesz też poprosić o wgląd w swoje dane lub ich poprawienie.</dd>
+
+    <dt>Gdzie są dane</dt>
+    <dd>Zapisy przechowujemy w arkuszu na koncie Google parafii. Sama strona nie przechowuje żadnych danych i nie używa reklam ani śledzenia. W Twojej przeglądarce zapamiętujemy tylko ostatnio wpisane imię i nazwisko oraz identyfikatory Twoich zapisów, żeby można było je cofnąć.</dd>
+
+    <dt>Zgłoszenia i pomysły</dt>
+    <dd>Zgłoszenie wysłane przyciskiem „Zgłoś problem lub pomysł” trafia e-mailem do twórcy aplikacji i nie jest zapisywane w arkuszu. Podanie kontaktu jest dobrowolne.</dd>
+  </dl>
+</template>
 
 <script src="config.js"></script>
 <script src="app.js"></script>
