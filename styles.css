@@ -345,3 +345,23 @@ select, input[type="search"], .dialog input[type="text"], .dialog input[type="te
   .slot.match { background: none; }
   .site-footer { color: #000; border-color: #999; }
 }
+
+/* ---- "Moje zapisy" panel ---- */
+.mine { margin: 18px 0; padding: 12px; background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); }
+.mine h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 20px; }
+.mine-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 700; }
+.mine-list { list-style: none; margin: 0; padding: 0; }
+.mine-row { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); }
+.mine-row:first-child { border-top: 0; }
+.mine-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mine-when { font-weight: 700; }
+.mine-what { color: var(--muted); overflow-wrap: anywhere; }
+.mine-actions { display: flex; gap: 8px; }
+.mine-actions .btn { flex: 1; }
+@media (min-width: 640px) {
+  .mine-row { flex-direction: row; align-items: center; justify-content: space-between; }
+  .mine-actions .btn { flex: none; }
+}
+.card.flash { animation: flash 1.8s ease-out; }
+@keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 3px transparent; } }
+@media print { .mine { display: none; } }

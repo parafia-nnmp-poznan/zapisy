@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '2.0';
+  var APP_VERSION = '2.1';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;
@@ -310,11 +310,64 @@
 
     var list = $('list');
     list.textContent = '';
+    if (!sacristy) { var mineBox = renderMine(); if (mineBox) list.appendChild(mineBox); }
     groups.forEach(function (g) { list.appendChild(renderDay(g, sacristy, !!needle)); });
     if (!shown) {
       list.appendChild(el('p', 'empty', data.masses.length ? 'Brak wyników dla wybranych filtrów.' : 'Brak terminów. Koordynator musi wygenerować terminy w arkuszu.'));
     }
     $('count').textContent = data.masses.length ? 'Msze: ' + shown + ' z ' + data.masses.length : '';
+  }
+
+  /** "Moje zapisy": quick overview of this device's own sign-ups, independent of the filters. */
+  function renderMine() {
+    var rows = [];
+    data.masses.forEach(function (mass) {
+      mass.slots.forEach(function (slot) { if (slot.taken && slot.mine && slot.id) rows.push({ mass: mass, slot: slot }); });
+    });
+    if (!rows.length) return null;
+    var box = el('section', 'mine');
+    box.setAttribute('aria-labelledby', 'mineTitle');
+    var title = el('h2', '', 'Moje zapisy');
+    title.id = 'mineTitle';
+    title.appendChild(el('span', 'mine-count', String(rows.length)));
+    box.appendChild(title);
+    var ul = el('ul', 'mine-list');
+    rows.forEach(function (r) {
+      var li = el('li', 'mine-row');
+      var info = el('div', 'mine-info');
+      info.appendChild(el('span', 'mine-when', capitalize(r.mass.weekday) + ' ' + formatDate(r.mass.date) + ', godz. ' + r.mass.time));
+      info.appendChild(el('span', 'mine-what', r.slot.role + ' · ' + r.slot.name));
+      li.appendChild(info);
+      var show = el('button', 'btn small', 'Pokaż'); show.type = 'button';
+      show.setAttribute('aria-label', 'Pokaż na liście: ' + r.slot.role + ', ' + r.mass.weekday + ' ' + formatDate(r.mass.date) + ' ' + r.mass.time);
+      show.onclick = function () { jumpToMass(r.mass.key); };
+      var leave = el('button', 'btn small danger', 'Wypisz mnie'); leave.type = 'button';
+      leave.setAttribute('aria-label', 'Wypisz mnie: ' + r.slot.role + ', ' + r.mass.weekday + ' ' + formatDate(r.mass.date) + ' ' + r.mass.time);
+      leave.onclick = function () { openRemove(r.mass, r.slot, false); };
+      var acts = el('div', 'mine-actions'); acts.appendChild(show); acts.appendChild(leave);
+      li.appendChild(acts);
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    return box;
+  }
+
+  function jumpToMass(key) {
+    if (filtersActive()) {
+      filters = { date: '', time: '', person: '', free: false };
+      $('fPerson').value = ''; $('fFree').checked = false;
+      render();
+    }
+    var cards = document.querySelectorAll('.card[data-key]');
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].getAttribute('data-key') !== key) continue;
+      var card = cards[i];
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      card.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+      card.classList.add('flash');
+      setTimeout(function () { card.classList.remove('flash'); }, 1800);
+      return;
+    }
   }
 
   function renderDay(group, sacristy, highlight) {
@@ -351,6 +404,7 @@
     var where = mass.weekday + ' ' + formatDate(mass.date) + ' godz. ' + mass.time;
     var card = el('div', 'card');
     card.setAttribute('role', 'group');
+    card.setAttribute('data-key', mass.key);
     card.setAttribute('aria-label', 'Msza: ' + where);
     var head = el('div', 'card-head');
     head.appendChild(el('h3', 'mass-time', mass.time));
