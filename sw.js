@@ -1,6 +1,6 @@
 /* Service worker: lets the app open instantly and show the last list when offline.
  * API calls (a different origin: script.google.com) are never touched. */
-const CACHE = 'zapisy-shell-v3';
+const CACHE = 'zapisy-shell-v6';
 const SHELL = [
   './', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'

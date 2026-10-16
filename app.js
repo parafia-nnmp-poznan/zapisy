@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '2.1';
+  var APP_VERSION = '3.1';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;
@@ -61,7 +61,6 @@
 
   // ------------------------------------------------------------ state
   var pin = store.get('pin', '');                 // sacristy PIN; empty = normal visitor
-  var savedName = store.get('name', '');          // last name used for self-service sign-up
   var myIds = [];                                 // ids of sign-ups made in this browser
   try { myIds = JSON.parse(store.get('myIds', '[]')); if (!Array.isArray(myIds)) myIds = []; } catch (e) { myIds = []; }
   var clientIdValue = '';                         // random id of this browser; only used to rate-limit problem reports
@@ -76,6 +75,27 @@
   var filters = { date: '', time: '', person: '', free: false };
 
   function saveMyIds() { store.set('myIds', JSON.stringify(myIds)); }
+
+  // The person's profile (first name, last name, phone) lives on this device. name + phone identify the person's
+  // sign-ups on every device, so "Moje zapisy" works anywhere after entering the same data.
+  function normPhone(v) {
+    var d = String(v || '').replace(/\D/g, '');
+    if (d.length === 13 && d.indexOf('0048') === 0) d = d.slice(4);
+    else if (d.length === 11 && d.indexOf('48') === 0) d = d.slice(2);
+    return d.length === 9 ? d : '';
+  }
+  function fmtPhone(d) { return String(d).replace(/^(\d{3})(\d{3})(\d{3})$/, '$1 $2 $3'); }
+  function profileName(p) { return p.first + ' ' + p.last; }
+  function loadProfile() {
+    try {
+      var p = JSON.parse(store.get('profile', 'null'));
+      if (p && p.first && p.last && normPhone(p.phone)) return { first: p.first, last: p.last, phone: normPhone(p.phone) };
+    } catch (e) { /* fall through */ }
+    return null;
+  }
+  var profile = loadProfile();
+  function saveProfile(p) { profile = p; store.set('profile', JSON.stringify(p)); }
+  function ownerPayload() { return profile ? { name: profileName(profile), phone: profile.phone } : null; }
 
   function clientId() {
     if (clientIdValue) return clientIdValue;
@@ -179,7 +199,7 @@
     var refreshBtn = $('btnRefresh');
     if (opts.manual) { refreshBtn.disabled = true; refreshBtn.textContent = ''; refreshBtn.appendChild(spinner()); refreshBtn.appendChild(document.createTextNode('Odświeżam…')); }
 
-    return api('getData', { pin: pin, myIds: myIds, fresh: !!opts.fresh }).then(function (result) {
+    return api('getData', { pin: pin, myIds: myIds, fresh: !!opts.fresh, owner: ownerPayload() }).then(function (result) {
       if (seq !== requestSeq) return;   // a newer request has been started; ignore this one
       if (result && result.error === 'PIN') {
         pin = ''; store.del('pin');
@@ -284,6 +304,7 @@
     var sacristy = !!data.sacristy;
     document.body.classList.toggle('sacristy', sacristy);
     renderMode(sacristy);
+    $('btnProfile').hidden = sacristy;
     $('btnMode').textContent = sacristy ? 'Wyłącz tryb zakrystii' : 'Tryb zakrystii';
     if (fromCache) showBanner('Pokazuję dane zapisane w urządzeniu z godz. ' + clock(updatedAt) + '. Trwa aktualizacja…', true);
 
@@ -349,6 +370,14 @@
       ul.appendChild(li);
     });
     box.appendChild(ul);
+    if (profile) {
+      var who = el('p', 'mine-who');
+      who.appendChild(el('span', '', profileName(profile) + ' · tel. ' + fmtPhone(profile.phone)));
+      var change = el('button', 'linkbtn', 'Zmień dane'); change.type = 'button';
+      change.onclick = function () { openProfile(); };
+      who.appendChild(change);
+      box.appendChild(who);
+    }
     return box;
   }
 
@@ -400,6 +429,17 @@
     return section;
   }
 
+  /** The role this visitor already holds on the mass (matched by name, like the server does), or ''. */
+  function roleOfVisitor(mass) {
+    var mine = normalize(profile ? profileName(profile) : '').replace(/[^a-z0-9]/g, '');
+    for (var i = 0; i < mass.slots.length; i++) {
+      var sl = mass.slots[i];
+      if (!sl.taken) continue;
+      if (sl.mine || (mine && normalize(sl.name).replace(/[^a-z0-9]/g, '') === mine)) return sl.role;
+    }
+    return '';
+  }
+
   function renderMass(mass, slots, sacristy, highlight) {
     var where = mass.weekday + ' ' + formatDate(mass.date) + ' godz. ' + mass.time;
     var card = el('div', 'card');
@@ -410,6 +450,10 @@
     head.appendChild(el('h3', 'mass-time', mass.time));
     if (mass.description) head.appendChild(el('span', 'description', mass.description));
     card.appendChild(head);
+
+    // One role per person per mass: once the visitor has a role here, the other free roles are switched off.
+    var myRole = sacristy ? '' : roleOfVisitor(mass);
+    if (myRole) card.appendChild(el('p', 'has-role', 'Masz już posługę na tej Mszy: ' + myRole + '. Na jednej Mszy można pełnić tylko jedną.'));
 
     slots.forEach(function (slot) {
       var row = el('div', 'slot' + (highlight && slot.taken ? ' match' : ''));
@@ -422,7 +466,8 @@
         var signup = el('button', 'btn primary', 'Zapisz się');
         signup.type = 'button';
         signup.setAttribute('aria-label', 'Zapisz się: ' + slot.role + ', ' + where);
-        signup.onclick = function () { openSignup(mass, slot); };
+        if (myRole) { signup.disabled = true; signup.title = 'Masz już posługę na tej Mszy'; }
+        else signup.onclick = function () { openSignup(mass, slot); };
         row.appendChild(signup);
       } else {
         var name = el('span', 'name', slot.name);
@@ -596,30 +641,90 @@
   }
 
   // ------------------------------------------------------------ actions on sign-ups
+  function retentionNote(prefix) {
+    var note = el('p', 'note', prefix + ' Dane usuwamy automatycznie, najpóźniej ');
+    note.appendChild(el('span', '', String(RETENTION_DAYS)));
+    note.appendChild(document.createTextNode(' dni po terminie Mszy.'));
+    return note;
+  }
+
+  /** First name, last name and phone. Saved on this device; a change also updates the person's existing entries. */
+  function openProfile(onDone) {
+    var first = !profile;
+    var content = el('div');
+    content.appendChild(el('p', '', first
+      ? 'Podaj swoje dane. Zapamiętamy je na tym urządzeniu, więc przy kolejnych zapisach nie trzeba ich wpisywać. Dzięki nim zobaczysz swoje zapisy także na innym urządzeniu, wystarczy wpisać te same dane.'
+      : 'Zmiana danych poprawi też Twoje istniejące zapisy na liście.'));
+    var f = field('Imię', 'text', profile ? profile.first : '', { max: 30 });
+    var l = field('Nazwisko', 'text', profile ? profile.last : '', { max: 30 });
+    var t = field('Numer telefonu', 'tel', profile ? fmtPhone(profile.phone) : '', { max: 20 });
+    f.input.autocomplete = 'given-name'; l.input.autocomplete = 'family-name'; t.input.autocomplete = 'tel'; t.input.inputMode = 'tel';
+    t.input.placeholder = 'np. 600 100 200';
+    content.appendChild(f.wrap); content.appendChild(l.wrap); content.appendChild(t.wrap);
+    content.appendChild(retentionNote('Imię i nazwisko będą widoczne na liście. Numer telefonu widzi tylko zakrystia (kontakt w razie potrzeby) i służy do rozpoznania Twoich zapisów.'));
+
+    openDialog(first ? 'Twoje dane' : 'Moje dane', content, [
+      { text: 'Zapisz dane', className: 'primary', pendingText: 'Zapisuję…', action: function () {
+        var fn = f.input.value.replace(/\s+/g, ' ').trim(), ln = l.input.value.replace(/\s+/g, ' ').trim(), ph = normPhone(t.input.value);
+        if (fn.length < 2) return Promise.reject(new Error('Podaj imię.'));
+        if (ln.length < 2) return Promise.reject(new Error('Podaj nazwisko.'));
+        if (!ph) return Promise.reject(new Error('Podaj poprawny numer telefonu (9 cyfr).'));
+        var next = { first: fn, last: ln, phone: ph };
+        var changed = profile && (profileName(profile) !== profileName(next) || profile.phone !== ph);
+        var work = changed
+          ? api('updateProfile', { old: ownerPayload(), next: { name: profileName(next), phone: ph } })
+          : Promise.resolve({ updated: 0 });
+        return work.then(function (res) {
+          saveProfile(next);
+          if (changed) {
+            toast(res && res.updated ? 'Dane zaktualizowane ✔ (zapisy: ' + res.updated + ')' : 'Dane zaktualizowane ✔');
+            loadData({ fresh: true });
+          } else if (!first) toast('Dane zapisane ✔');
+          else loadData({ fresh: true });   // another device may already hold sign-ups for these data
+          if (onDone) setTimeout(onDone, 0);
+        });
+      } },
+      { text: 'Anuluj' }
+    ]);
+  }
+
   function openSignup(mass, slot) {
     var sacristy = !!data.sacristy;
+    if (!sacristy && !profile) { openProfile(function () { openSignup(mass, slot); }); return; }
     var content = el('div');
     content.appendChild(massSummary(mass, slot));
-    var name = field('Imię i nazwisko', 'text', sacristy ? '' : savedName);
-    content.appendChild(name.wrap);
-    var phone = null;
-    if (sacristy) { phone = field('Telefon (opcjonalnie)', 'tel', '', { max: 20 }); content.appendChild(phone.wrap); }
-    var note = el('p', 'note', 'Imię i nazwisko będą widoczne na liście. Dane usuwamy automatycznie, najpóźniej ');
-    var days = el('span', '', String(RETENTION_DAYS));
-    note.appendChild(days);
-    note.appendChild(document.createTextNode(' dni po terminie Mszy.'));
-    content.appendChild(note);
+    var name = null, phone = null;
+    if (sacristy) {
+      name = field('Imię i nazwisko', 'text', '');
+      content.appendChild(name.wrap);
+      phone = field('Telefon (opcjonalnie)', 'tel', '', { max: 20 });
+      content.appendChild(phone.wrap);
+      content.appendChild(retentionNote('Imię i nazwisko będą widoczne na liście.'));
+    } else {
+      var who = el('div', 'who');
+      who.appendChild(el('span', 'who-label', 'Zapisujesz się jako'));
+      who.appendChild(el('strong', 'who-name', profileName(profile)));
+      who.appendChild(el('span', 'who-phone', 'tel. ' + fmtPhone(profile.phone)));
+      var change = el('button', 'linkbtn', 'To nie Ty? Zmień dane'); change.type = 'button';
+      change.onclick = function () { openProfile(function () { openSignup(mass, slot); }); };
+      who.appendChild(change);
+      content.appendChild(who);
+      content.appendChild(retentionNote('Imię i nazwisko będą widoczne na liście, numer telefonu widzi tylko zakrystia.'));
+    }
 
     openDialog('Zapis na posługę', content, [
       { text: 'Zapisz', className: 'primary', pendingText: 'Zapisuję…', action: function () {
-        var typedName = name.input.value.replace(/\s+/g, ' ').trim();
-        if (typedName.length < 3) return Promise.reject(new Error('Podaj imię i nazwisko.'));
-        var typedPhone = phone ? phone.input.value.trim() : '';
+        var typedName, typedPhone;
+        if (sacristy) {
+          typedName = name.input.value.replace(/\s+/g, ' ').trim();
+          if (typedName.length < 3) return Promise.reject(new Error('Podaj imię i nazwisko.'));
+          typedPhone = phone.input.value.trim();
+        } else { typedName = profileName(profile); typedPhone = profile.phone; }
         return api('signUp', { mass: mass.key, role: slot.role, name: typedName, phone: typedPhone, pin: sacristy ? pin : '' })
           .then(function (result) {
             var s = findSlot(mass.key, slot.role);
             if (s) { s.taken = true; s.name = typedName; s.mine = !sacristy; s.id = result.id; s.phone = sacristy ? typedPhone : null; }
-            if (!sacristy) { myIds.push(result.id); saveMyIds(); savedName = typedName; store.set('name', savedName); }
+            if (!sacristy) { myIds.push(result.id); saveMyIds(); }
             render(); saveCache();
             toast('Zapisano ✔  ' + slot.role + ', ' + mass.weekday + ' ' + formatDate(mass.date));
             loadData({ fresh: true });   // confirm in the background
@@ -686,7 +791,7 @@
       { text: 'Włącz', className: 'primary', pendingText: 'Sprawdzam PIN…', action: function () {
         var entered = input.input.value.trim();
         if (!entered) return Promise.reject(new Error('Wpisz PIN.'));
-        return api('getData', { pin: entered, myIds: myIds, fresh: true }).then(function (result) {
+        return api('getData', { pin: entered, myIds: myIds, fresh: true, owner: ownerPayload() }).then(function (result) {
           if (result && result.error === 'PIN') throw new Error('Nieprawidłowy PIN.');
           pin = entered; store.set('pin', pin);
           requestSeq++;             // drop any older in-flight response
@@ -800,6 +905,7 @@
   $('btnRefresh').onclick = function () { loadData({ fresh: true, manual: true }); };
   $('btnHelp').onclick = openHelp;
   $('btnMore').onclick = function (ev) { ev.stopPropagation(); setMore(!$('moreMenu').classList.contains('open')); };
+  $('btnProfile').onclick = menuAction(function () { openProfile(); });
   $('btnPrint').onclick = menuAction(function () { window.print(); });
   $('btnFeedback').onclick = menuAction(openFeedback);
   $('btnMode').onclick = menuAction(toggleSacristyMode);

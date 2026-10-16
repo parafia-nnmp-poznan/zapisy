@@ -34,6 +34,7 @@
     <button type="button" class="btn" id="btnRefresh">Odśwież</button>
     <button type="button" class="btn more-toggle" id="btnMore" aria-expanded="false" aria-controls="moreMenu" aria-haspopup="true">Więcej</button>
     <div class="more-menu" id="moreMenu">
+      <button type="button" class="btn" id="btnProfile">Moje dane</button>
       <button type="button" class="btn" id="btnPrint">Drukuj</button>
       <button type="button" class="btn" id="btnFeedback">Zgłoś problem lub pomysł</button>
       <button type="button" class="btn btn-mode" id="btnMode">Tryb zakrystii</button>
@@ -105,7 +106,7 @@
   <ol class="steps">
     <li>Znajdź dzień i godzinę Mszy. Każdy dzień tygodnia ma swój kolor, a pod nim są Msze z tego dnia.</li>
     <li>Przy wolnej posłudze (napis „wolne”) naciśnij <strong>Zapisz się</strong>.</li>
-    <li>Wpisz imię i nazwisko, potem naciśnij <strong>Zapisz</strong>. Nie potrzeba konta ani hasła.</li>
+    <li>Przy pierwszym zapisie podaj imię, nazwisko i numer telefonu. Zapamiętamy je na tym urządzeniu, więc potem wystarczy nacisnąć <strong>Zapisz</strong>. Nie potrzeba konta ani hasła.</li>
     <li>Gotowe. Zobaczysz potwierdzenie, a Twoje nazwisko pojawi się na liście.</li>
   </ol>
 
@@ -116,7 +117,7 @@
   </ul>
 
   <h3>Nie możesz przyjść?</h3>
-  <p>Naciśnij <strong>Wypisz mnie</strong> przy swoim wpisie. Ten przycisk jest widoczny na urządzeniu, z którego się zapisałeś(-aś). Jeśli zapisywałeś(-aś) się na innym urządzeniu albo zapisała Cię zakrystia, poproś zakrystię o wypisanie.</p>
+  <p>Naciśnij <strong>Wypisz mnie</strong> przy swoim wpisie. Przycisk jest widoczny przy zapisach rozpoznanych po Twoich danych (imię, nazwisko, numer telefonu) na każdym urządzeniu. Na nowym urządzeniu wybierz <strong>Moje dane</strong> i wpisz te same dane. Jeśli coś nie działa, poproś zakrystię o wypisanie.</p>
 
   <h3>Bez telefonu lub internetu</h3>
   <p>W zakrystii jest tablet. Zakrystia chętnie zapisze Cię na wybraną posługę.</p>
@@ -126,8 +127,8 @@
 
   <h3>Dobrze wiedzieć</h3>
   <ul class="bullets">
-    <li>Na samej górze listy jest panel <strong>Moje zapisy</strong> (pojawia się, gdy z tego urządzenia ktoś się zapisał). Przycisk <strong>Pokaż</strong> przenosi do Mszy, a <strong>Wypisz mnie</strong> cofa zapis.</li>
-    <li>Z telefonu można zapisać jedną osobę na najwyżej 14 posług. Więcej zapisów robi zakrystia.</li>
+    <li>Na samej górze listy jest panel <strong>Moje zapisy</strong>. Przycisk <strong>Pokaż</strong> przenosi do Mszy, a <strong>Wypisz mnie</strong> cofa zapis. Przycisk <strong>Moje dane</strong> pozwala zmienić imię, nazwisko lub telefon (zapisy na liście też się zmienią).</li>
+    <li>Na jednej Mszy można pełnić tylko jedną posługę. Jeśli ktoś ma pełnić więcej, wpisze go zakrystia.</li>
     <li>Lista obejmuje najbliższe 2 tygodnie i odświeża się sama. Możesz też nacisnąć <strong>Odśwież</strong>.</li>
     <li>Aplikację można dodać do ekranu głównego telefonu. Android (Chrome): menu ⋮ → „Zainstaluj aplikację”. iPhone (Safari): „Udostępnij” → „Do ekranu początkowego”.</li>
     <li>Coś nie działa albo masz pomysł? Użyj przycisku <strong>Zgłoś problem lub pomysł</strong>.</li>
@@ -143,7 +144,7 @@
     <dd>Wyłącznie do zorganizowania posług liturgicznych podczas Mszy Świętych: czytań, psalmu, modlitwy powszechnej i procesji z darami.</dd>
 
     <dt>Jakie dane</dt>
-    <dd>Imię i nazwisko. Będą widoczne dla osób korzystających z aplikacji. Jeśli zapisuje Cię zakrystia, może dopisać numer telefonu, który widzi tylko zakrystia. Podanie danych jest dobrowolne, ale bez nich nie można się zapisać.</dd>
+    <dd>Imię i nazwisko (będą widoczne na liście dla osób korzystających z aplikacji) oraz numer telefonu (widzi go tylko zakrystia; służy do kontaktu i do rozpoznania Twoich zapisów na różnych urządzeniach). Podanie danych jest dobrowolne, ale bez nich nie można się zapisać.</dd>
 
     <dt>Jak długo</dt>
     <dd>Dane usuwamy <strong>automatycznie</strong>, najpóźniej <span data-retention>30</span> dni po terminie Mszy, na którą jesteś zapisany(-a).</dd>
@@ -152,7 +153,7 @@
     <dd>Możesz w każdej chwili usunąć swój wpis przyciskiem <strong>Wypisz mnie</strong> albo poprosić o to zakrystię. Możesz też poprosić o wgląd w swoje dane lub ich poprawienie.</dd>
 
     <dt>Gdzie są dane</dt>
-    <dd>Zapisy przechowujemy w arkuszu na koncie Google parafii. Sama strona nie przechowuje żadnych danych i nie używa reklam ani śledzenia. W Twojej przeglądarce zapamiętujemy tylko ostatnio wpisane imię i nazwisko oraz identyfikatory Twoich zapisów, żeby można było je cofnąć.</dd>
+    <dd>Zapisy przechowujemy w arkuszu na koncie Google parafii. Sama strona nie przechowuje żadnych danych i nie używa reklam ani śledzenia. W Twojej przeglądarce zapamiętujemy tylko Twoje imię, nazwisko i numer telefonu (żeby nie wpisywać ich za każdym razem) oraz identyfikatory Twoich zapisów.</dd>
 
     <dt>Zgłoszenia i pomysły</dt>
     <dd>Zgłoszenie wysłane przyciskiem „Zgłoś problem lub pomysł” trafia e-mailem do twórcy aplikacji i nie jest zapisywane w arkuszu. Podanie kontaktu jest dobrowolne.</dd>
