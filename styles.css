@@ -24,6 +24,9 @@
   --ok: #86dba1;  --ok-bg: #14301f;
   --warn: #f3cd78; --warn-bg: #33290f;
   --match: #3b3612;
+  --ok-line: #3f8f6f; --ok-soft: rgba(134, 219, 161, .09);
+  --mine-bg: #1c3556; --mine-line: #6fa9f4;
+  --bar-taken: #d9985f; --bar-quiet: #56657a;
   --focus: #a9d0ff;
   --shadow: 0 8px 28px rgba(0, 0, 0, .5);
   --radius: 14px;
@@ -44,6 +47,9 @@
     --ok: #1b6e38;  --ok-bg: #e1f3e7;
     --warn: #7a5200; --warn-bg: #fff1cf;
     --match: #fff3b8;
+    --ok-line: #5aa57a; --ok-soft: rgba(27, 110, 56, .08);
+    --mine-bg: #e3eefb; --mine-line: #1f5fae;
+    --bar-taken: #b8691f; --bar-quiet: #8c99ab;
     --focus: #1f5fae;
     --shadow: 0 8px 28px rgba(20, 30, 50, .18);
   }
@@ -385,3 +391,28 @@ select, input[type="search"], .dialog input[type="text"], .dialog input[type="te
 .notice { margin: 18px 0 0; padding: 12px; border: 1px solid var(--warn); border-radius: var(--radius); background: var(--surface); }
 .notice p { margin: 0 0 10px; }
 .notice-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---- free / taken / yours: free slots stand out, taken ones are quiet ---- */
+.mass-count { margin-left: auto; font-size: 15px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mass-count.has-free { color: var(--ok); }
+.occ { display: flex; gap: 3px; height: 8px; margin: 8px 0 2px; }
+.occ i { flex: 1; border-radius: 99px; background: var(--bar-taken); }
+.occ i.f { background: var(--ok); }
+.occ i.m { background: var(--accent); }
+
+.slot { border-top: 0; margin-top: 8px; padding: 10px 12px; border-radius: 10px; border-left: 5px solid transparent; }
+.slot.is-taken { border-left-color: var(--bar-quiet); }
+.slot.is-taken .role { color: var(--muted); font-weight: 600; }
+.slot.is-taken .name { color: var(--muted); }
+.state { color: var(--muted); font-size: 14px; font-weight: 600; }
+.slot.is-free { border: 2px dashed var(--ok-line); border-left: 5px solid var(--ok); background: var(--ok-soft); padding: 8px 10px 8px 10px; }
+.slot.is-free .role { font-size: 17px; }
+.free { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; padding: 1px 10px; border-radius: 999px; background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); font-weight: 700; font-size: 14px; }
+.slot.is-mine { background: var(--mine-bg); border-left: 5px solid var(--mine-line); }
+.slot.is-mine .role { color: var(--text); }
+.slot.is-mine .name { color: var(--text); font-weight: 700; }
+.me { background: transparent; color: var(--link); border-color: var(--mine-line); margin-left: 8px; display: inline-block; margin-top: 2px; }
+.slot.match { margin-left: 0; margin-right: 0; background: var(--match); }
+.card { padding-bottom: 12px; }
+
+.footer-version { margin: 10px 0 0; font-size: 14px; color: var(--muted); }

@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '3.2';
+  var APP_VERSION = '3.4';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;
@@ -482,20 +482,27 @@
     var head = el('div', 'card-head');
     head.appendChild(el('h3', 'mass-time', mass.time));
     if (mass.description) head.appendChild(el('span', 'description', mass.description));
+    var freeCount = mass.slots.filter(function (x) { return !x.taken; }).length;
+    var count = el('span', 'mass-count' + (freeCount ? ' has-free' : ''), 'Wolne: ' + freeCount + ' z ' + mass.slots.length);
+    head.appendChild(count);
     card.appendChild(head);
+    var occ = el('div', 'occ');   // one segment per role: free / taken / yours (the text above carries the same information)
+    occ.setAttribute('aria-hidden', 'true');
+    mass.slots.forEach(function (x) { occ.appendChild(el('i', x.taken ? (x.mine && !sacristy ? 'm' : 't') : 'f')); });
+    card.appendChild(occ);
 
     // One role per person per mass: once the visitor has a role here, the other free roles are switched off.
     var myRole = sacristy ? '' : roleOfVisitor(mass);
     if (myRole) card.appendChild(el('p', 'has-role', 'Masz już posługę na tej Mszy: ' + myRole + '. Na jednej Mszy można pełnić tylko jedną.'));
 
     slots.forEach(function (slot) {
-      var row = el('div', 'slot' + (highlight && slot.taken ? ' match' : ''));
+      var row = el('div', 'slot ' + (!slot.taken ? 'is-free' : (slot.mine && !sacristy ? 'is-taken is-mine' : 'is-taken')) + (highlight && slot.taken ? ' match' : ''));
       var info = el('div', 'slot-info');
       info.appendChild(el('span', 'role', slot.role));
       row.appendChild(info);
 
       if (!slot.taken) {
-        info.appendChild(el('span', 'free', 'wolne'));
+        info.appendChild(el('span', 'free', '＋ Wolne'));
         var signup = el('button', 'btn primary', 'Zapisz się');
         signup.type = 'button';
         signup.setAttribute('aria-label', 'Zapisz się: ' + slot.role + ', ' + where);
@@ -505,7 +512,7 @@
       } else {
         var name = el('span', 'name', slot.name);
         if (sacristy && slot.phone) name.appendChild(el('span', 'phone', ' · ' + slot.phone));
-        if (!sacristy && slot.mine) name.appendChild(el('span', 'me', 'Twój zapis'));
+        if (!sacristy && slot.mine) name.appendChild(el('span', 'me', '✓ Twój zapis'));
         info.appendChild(name);
         if (sacristy) {
           var actions = el('div', 'actions');
@@ -516,6 +523,8 @@
           del.setAttribute('aria-label', 'Usuń wpis: ' + slot.name + ', ' + slot.role + ', ' + where);
           del.onclick = function () { openRemove(mass, slot, true); };
           actions.appendChild(edit); actions.appendChild(del); row.appendChild(actions);
+        } else if (!slot.mine) {
+          row.appendChild(el('span', 'state', 'Zajęte'));
         } else if (slot.mine) {
           var leave = el('button', 'btn small danger', 'Wypisz mnie'); leave.type = 'button';
           leave.setAttribute('aria-label', 'Wypisz mnie: ' + slot.role + ', ' + where);
@@ -986,6 +995,7 @@
   }
 
   // ------------------------------------------------------------ start
+  $('appVersion').textContent = APP_VERSION;
   if (!configured()) {
     renderError('Aplikacja nie jest skonfigurowana: w pliku config.js wpisz adres API (kończy się na /exec).');
   } else {
