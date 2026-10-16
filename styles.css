@@ -376,3 +376,12 @@ select, input[type="search"], .dialog input[type="text"], .dialog input[type="te
 
 .has-role { margin: 0 0 6px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 15px; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.phone-check { margin: -4px 0 8px; font-size: 14px; color: var(--muted); min-height: 20px; }
+.phone-check.bad { color: var(--warn); }
+.prompt-box { border-style: dashed; }
+.prompt-box h2 { margin: 0 0 6px; font-size: 20px; }
+.prompt-text { margin: 0 0 12px; color: var(--muted); }
+.notice { margin: 18px 0 0; padding: 12px; border: 1px solid var(--warn); border-radius: var(--radius); background: var(--surface); }
+.notice p { margin: 0 0 10px; }
+.notice-actions { display: flex; flex-wrap: wrap; gap: 8px; }

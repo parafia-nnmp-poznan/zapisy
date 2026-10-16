@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '3.1';
+  var APP_VERSION = '3.2';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;
@@ -331,12 +331,45 @@
 
     var list = $('list');
     list.textContent = '';
-    if (!sacristy) { var mineBox = renderMine(); if (mineBox) list.appendChild(mineBox); }
+    if (!sacristy) {
+      var notice = renderOtherPhoneNotice(); if (notice) list.appendChild(notice);
+      var mineBox = renderMine() || renderProfilePrompt(); if (mineBox) list.appendChild(mineBox);
+    }
     groups.forEach(function (g) { list.appendChild(renderDay(g, sacristy, !!needle)); });
     if (!shown) {
       list.appendChild(el('p', 'empty', data.masses.length ? 'Brak wyników dla wybranych filtrów.' : 'Brak terminów. Koordynator musi wygenerować terminy w arkuszu.'));
     }
     $('count').textContent = data.masses.length ? 'Msze: ' + shown + ' z ' + data.masses.length : '';
+  }
+
+  /** Shown while there is no profile on this device: the sign-ups of this person cannot be recognised yet. */
+  function renderProfilePrompt() {
+    if (profile) return null;
+    var box = el('section', 'mine prompt-box');
+    box.appendChild(el('h2', '', 'Zobacz swoje zapisy'));
+    box.appendChild(el('p', 'prompt-text', 'Podaj imię, nazwisko i numer telefonu, a zobaczysz swoje zapisy zrobione na dowolnym urządzeniu i będziesz mógł(-ła) się z nich wypisać.'));
+    var b = el('button', 'btn primary', 'Podaj swoje dane'); b.type = 'button';
+    b.onclick = function () { openProfile(); };
+    box.appendChild(b);
+    return box;
+  }
+
+  /** Same name, another phone number: most likely a typo in one of the numbers. */
+  function renderOtherPhoneNotice() {
+    var n = data && data.sameNameOtherPhone;
+    if (!profile || !n) return null;
+    var tag = profileName(profile) + '|' + n;
+    if (store.get('hideOtherPhone', '') === tag) return null;
+    var box = el('section', 'notice');
+    box.setAttribute('role', 'status');
+    box.appendChild(el('p', '', 'Na imię i nazwisko ' + profileName(profile) + ' są na liście jeszcze zapisy (' + n + ') z innym numerem telefonu niż ' + fmtPhone(profile.phone) + '. Jeśli to Twoje zapisy, ktoś mógł pomylić numer. Popraw numer w „Moje dane", a zapisy się połączą.'));
+    var acts = el('div', 'notice-actions');
+    var fix = el('button', 'btn small primary', 'Popraw numer'); fix.type = 'button';
+    fix.onclick = function () { openProfile(); };
+    var no = el('button', 'btn small', 'To nie moje zapisy'); no.type = 'button';
+    no.onclick = function () { store.set('hideOtherPhone', tag); render(); };
+    acts.appendChild(fix); acts.appendChild(no); box.appendChild(acts);
+    return box;
   }
 
   /** "Moje zapisy": quick overview of this device's own sign-ups, independent of the filters. */
@@ -649,11 +682,14 @@
   }
 
   /** First name, last name and phone. Saved on this device; a change also updates the person's existing entries. */
-  function openProfile(onDone) {
+  function openProfile(onDone, opts) {
+    opts = opts || {};
     var first = !profile;
     var content = el('div');
     content.appendChild(el('p', '', first
-      ? 'Podaj swoje dane. Zapamiętamy je na tym urządzeniu, więc przy kolejnych zapisach nie trzeba ich wpisywać. Dzięki nim zobaczysz swoje zapisy także na innym urządzeniu, wystarczy wpisać te same dane.'
+      ? (opts.welcome
+        ? 'Podaj swoje dane, a od razu zobaczysz swoje zapisy zrobione na dowolnym urządzeniu. Zapamiętamy je na tym urządzeniu, więc nie trzeba ich wpisywać przy każdym zapisie. Wpisz te same dane na każdym urządzeniu. Możesz też pominąć i tylko przeglądać listę.'
+        : 'Podaj swoje dane. Zapamiętamy je na tym urządzeniu, więc przy kolejnych zapisach nie trzeba ich wpisywać. Dzięki nim zobaczysz swoje zapisy także na innym urządzeniu, wystarczy wpisać te same dane.')
       : 'Zmiana danych poprawi też Twoje istniejące zapisy na liście.'));
     var f = field('Imię', 'text', profile ? profile.first : '', { max: 30 });
     var l = field('Nazwisko', 'text', profile ? profile.last : '', { max: 30 });
@@ -661,8 +697,18 @@
     f.input.autocomplete = 'given-name'; l.input.autocomplete = 'family-name'; t.input.autocomplete = 'tel'; t.input.inputMode = 'tel';
     t.input.placeholder = 'np. 600 100 200';
     content.appendChild(f.wrap); content.appendChild(l.wrap); content.appendChild(t.wrap);
+    var check = el('p', 'phone-check');   // shows the number as it will be saved, to catch typos
+    check.setAttribute('aria-live', 'polite');
+    function showCheck() {
+      var d = normPhone(t.input.value);
+      check.textContent = d ? 'Zapiszemy numer: ' + fmtPhone(d) + '. Sprawdź, czy jest dobry, bo po nim rozpoznajemy Twoje zapisy.' : (t.input.value.trim() ? 'Numer ma mieć 9 cyfr.' : '');
+      check.className = 'phone-check' + (d ? '' : ' bad');
+    }
+    t.input.addEventListener('input', showCheck); showCheck();
+    content.appendChild(check);
     content.appendChild(retentionNote('Imię i nazwisko będą widoczne na liście. Numer telefonu widzi tylko zakrystia (kontakt w razie potrzeby) i służy do rozpoznania Twoich zapisów.'));
 
+    var skip = opts.welcome ? { text: 'Pomiń na razie', action: function () { store.set('profileSkipped', '1'); return Promise.resolve(); } } : { text: 'Anuluj' };
     openDialog(first ? 'Twoje dane' : 'Moje dane', content, [
       { text: 'Zapisz dane', className: 'primary', pendingText: 'Zapisuję…', action: function () {
         var fn = f.input.value.replace(/\s+/g, ' ').trim(), ln = l.input.value.replace(/\s+/g, ' ').trim(), ph = normPhone(t.input.value);
@@ -684,7 +730,7 @@
           if (onDone) setTimeout(onDone, 0);
         });
       } },
-      { text: 'Anuluj' }
+      skip
     ]);
   }
 
@@ -948,6 +994,9 @@
       data = cached.data; updatedAt = cached.at; fromCache = true;
       render();
     }
-    loadData({});
+    loadData({}).then(function () {
+      // First visit on this device: ask for the profile right away (skippable), so "Moje zapisy" shows at once.
+      if (!profile && !pin && !store.get('profileSkipped', '') && !dialogOpen) openProfile(null, { welcome: true });
+    });
   }
 })();
