@@ -1,6 +1,6 @@
 {
-  "name": "Zapisy na posługi – Parafia Nawiedzenia NMP w Poznaniu",
-  "short_name": "Zapisy",
+  "name": "Zapisy liturgiczne NNMP w Poznaniu",
+  "short_name": "Zapisy NNMP",
   "description": "Zapisy na czytania, psalm, modlitwę powszechną i procesję z darami w Parafii Nawiedzenia NMP w Poznaniu.",
   "lang": "pl",
   "start_url": "./",
@@ -24,11 +24,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ]
 }

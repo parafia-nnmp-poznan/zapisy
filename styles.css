@@ -116,7 +116,7 @@ h1, h2, h3, p { margin-top: 0; }
   display: flex; align-items: center; gap: 14px;
   padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: 14px;
 }
-.brand-icon { width: 52px; height: 52px; border-radius: 12px; flex: none; }
+.brand-icon { width: 52px; height: 52px; border-radius: 12px; flex: none; background: #fff; border: 1px solid var(--border); }
 .brand-text { min-width: 0; }
 .parish { margin: 0; font-size: 16px; font-weight: 700; color: var(--link); line-height: 1.25; }
 .site-header h1 { font-size: 24px; line-height: 1.2; margin: 2px 0 0; }
