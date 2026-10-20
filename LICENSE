@@ -1,0 +1,46 @@
+Copyright (c) 2026 Tomasz Sobkowiak. Wszelkie prawa zastrzeżone.
+All rights reserved.
+
+LICENCJA / LICENSE (PL)
+
+1. Autorem i właścicielem autorskich praw majątkowych do oprogramowania
+   "Zapisy liturgiczne NNMP w Poznaniu" (kod źródłowy, układ, teksty
+   interfejsu, skrypt Google Apps Script i dokumentacja; dalej: "Oprogramowanie")
+   jest Tomasz Sobkowiak ("Autor").
+
+2. Parafia Nawiedzenia Najświętszej Maryi Panny w Poznaniu ("Parafia")
+   otrzymuje nieodpłatną, niewyłączną licencję bezterminową na używanie
+   Oprogramowania na własne potrzeby, w tym na jego hostowanie, uruchamianie,
+   udostępnianie parafianom oraz na wprowadzanie w nim zmian niezbędnych do
+   bieżącego utrzymania. Licencja nie obejmuje prawa do udzielania
+   sublicencji ani przenoszenia Oprogramowania na osoby trzecie, w tym inne
+   parafie lub organizacje, bez pisemnej zgody Autora.
+
+3. Poza zakresem określonym w pkt 2 zabrania się, bez uprzedniej zgody Autora
+   wyrażonej na piśmie (wystarczy e-mail): kopiowania, rozpowszechniania,
+   publikowania, modyfikowania, tworzenia utworów zależnych, uruchamiania
+   własnych instancji oraz wykorzystywania Oprogramowania lub jego części
+   w celach komercyjnych i niekomercyjnych.
+
+4. Publiczna dostępność kodu w serwisie GitHub służy wyłącznie hostingowi
+   (GitHub Pages) i nie oznacza udzielenia żadnej licencji. Prawo GitHuba do
+   wyświetlania i forkowania wynika wyłącznie z regulaminu serwisu GitHub.
+
+5. Logo, nazwa i wizerunki Parafii nie należą do Autora i nie są objęte
+   niniejszą licencją; prawa do nich przysługują Parafii.
+
+6. Oprogramowanie jest udostępniane "tak jak jest", bez jakiejkolwiek
+   gwarancji. Autor nie odpowiada za szkody wynikłe z jego używania, w
+   najszerszym zakresie dozwolonym przez prawo.
+
+7. Zgody i pytania: its.tsobkowiak@gmail.com.
+
+ENGLISH SUMMARY
+
+Copyright (c) 2026 Tomasz Sobkowiak. All rights reserved. The software is
+licensed, free of charge, non-exclusively and perpetually, only to the Parish
+of the Visitation of the Blessed Virgin Mary in Poznań for its own use
+(hosting, running, maintaining). No other person may copy, distribute, modify,
+host or otherwise use the software or any part of it without the author's prior
+written permission. Public visibility on GitHub grants no licence. Parish logo
+and name are excluded. Provided "as is", without warranty.
