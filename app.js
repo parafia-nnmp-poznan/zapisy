@@ -1,4 +1,8 @@
 /*
+ * © 2026 [IMIĘ I NAZWISKO AUTORA]. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
+ * Parafia Nawiedzenia NMP w Poznaniu ma licencję na używanie; inne użycie wymaga zgody autora.
+ */
+/*
  * Zapisy na posługi liturgiczne – Parafia Nawiedzenia NMP w Poznaniu: front end (GitHub Pages).
  * Talks to the Apps Script web app (see config.js) using JSON over POST with a text/plain body.
  * All user-supplied text is inserted with textContent (never innerHTML).
@@ -7,7 +11,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '3.6';
+  var APP_VERSION = '3.8';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;

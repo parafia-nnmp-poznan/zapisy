@@ -1,4 +1,8 @@
 /*
+ * © 2026 [IMIĘ I NAZWISKO AUTORA]. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
+ * Parafia Nawiedzenia NMP w Poznaniu ma licencję na używanie; inne użycie wymaga zgody autora.
+ */
+/*
  * Zapisy na posługi – Parafia Nawiedzenia NMP w Poznaniu
  * Mobile-first: base rules are for phones; wider screens add rules with min-width media queries
  *   640px  – tablet (two-column dialogs); 900px – toolbar in one row
@@ -26,7 +30,7 @@
   --match: #3b3612;
   --ok-line: #3f8f6f; --ok-soft: rgba(134, 219, 161, .09);
   --mine-bg: #1c3556; --mine-line: #6fa9f4;
-  --bar-taken: #d9985f; --bar-quiet: #56657a;
+  --bar-quiet: #6b7b92;   /* taken slots: grey, same colour for the cell border and the occupancy bar */
   --focus: #a9d0ff;
   --shadow: 0 8px 28px rgba(0, 0, 0, .5);
   --radius: 14px;
@@ -49,7 +53,7 @@
     --match: #fff3b8;
     --ok-line: #5aa57a; --ok-soft: rgba(27, 110, 56, .08);
     --mine-bg: #e3eefb; --mine-line: #1f5fae;
-    --bar-taken: #b8691f; --bar-quiet: #8c99ab;
+    --bar-quiet: #7a889b;
     --focus: #1f5fae;
     --shadow: 0 8px 28px rgba(20, 30, 50, .18);
   }
@@ -396,7 +400,7 @@ select, input[type="search"], .dialog input[type="text"], .dialog input[type="te
 .mass-count { margin-left: auto; font-size: 15px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 .mass-count.has-free { color: var(--ok); }
 .occ { display: flex; gap: 3px; height: 8px; margin: 8px 0 2px; }
-.occ i { flex: 1; border-radius: 99px; background: var(--bar-taken); }
+.occ i { flex: 1; border-radius: 99px; background: var(--bar-quiet); }
 .occ i.f { background: var(--ok); }
 .occ i.m { background: var(--accent); }
 
