@@ -1,10 +1,10 @@
 /*
- * © 2026 [IMIĘ I NAZWISKO AUTORA]. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
+ * © 2026 Tomasz Sobkowiak. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
  * Parafia Nawiedzenia NMP w Poznaniu ma licencję na używanie; inne użycie wymaga zgody autora.
  */
 /* Service worker: lets the app open instantly and show the last list when offline.
  * API calls (a different origin: script.google.com) are never touched. */
-const CACHE = 'zapisy-shell-v13';
+const CACHE = 'zapisy-shell-v15';
 const SHELL = [
   './', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/favicon-32.png', 'icons/logo-header.png'

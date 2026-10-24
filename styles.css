@@ -1,5 +1,5 @@
 /*
- * © 2026 [IMIĘ I NAZWISKO AUTORA]. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
+ * © 2026 Tomasz Sobkowiak. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
  * Parafia Nawiedzenia NMP w Poznaniu ma licencję na używanie; inne użycie wymaga zgody autora.
  */
 /*
@@ -188,6 +188,20 @@ body.sacristy .toolbar-wrap { border-bottom: 3px solid var(--warn); }
 }
 .toast.error { background: var(--warn-bg); color: var(--danger); border-color: var(--danger); }
 
+/* ============================================================ back-to-top */
+.to-top {
+  position: fixed; z-index: 20; width: 52px; height: 52px; padding: 0; border-radius: 50%;
+  right: max(16px, env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); border: 2px solid var(--bg); box-shadow: var(--shadow);
+  opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .2s, transform .2s;
+}
+.to-top[hidden] { display: none; }
+.to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+.to-top:hover { filter: brightness(1.1); }
+.to-top:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
+
 /* ============================================================ filters */
 .filters { margin: 14px 0 0; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .filters-top { display: flex; gap: 10px; align-items: flex-end; }
@@ -345,7 +359,7 @@ select, input[type="search"], .dialog input[type="text"], .dialog input[type="te
 /* ============================================================ print */
 @media print {
   body { background: #fff; color: #000; font-size: 13px; }
-  .progress, .skip-link, .toolbar-wrap, .filters, .banner, .toast, .overlay, .site-footer .footer-links, .btn, .phone, .subtitle, .day-tag, .me { display: none !important; }
+  .progress, .skip-link, .toolbar-wrap, .to-top, .filters, .banner, .toast, .overlay, .site-footer .footer-links, .btn, .phone, .subtitle, .day-tag, .me { display: none !important; }
   .site-header { background: none; border-bottom: 2px solid #000; }
   .brand-icon { display: none; }
   .parish, .site-header h1 { color: #000; }

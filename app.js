@@ -1,5 +1,5 @@
 /*
- * © 2026 [IMIĘ I NAZWISKO AUTORA]. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
+ * © 2026 Tomasz Sobkowiak. Wszelkie prawa zastrzeżone. Licencja: patrz plik LICENSE.
  * Parafia Nawiedzenia NMP w Poznaniu ma licencję na używanie; inne użycie wymaga zgody autora.
  */
 /*
@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '3.8';
+  var APP_VERSION = '4.0';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;
@@ -997,6 +997,25 @@
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(function () { /* the app works without it */ });
   }
+
+  // ------------------------------------------------------------ back to top
+  (function () {
+    var btn = $('toTop'), ticking = false, visible = false;
+    if (!btn) return;
+    function update() {
+      ticking = false;
+      var want = (window.pageYOffset || document.documentElement.scrollTop) > window.innerHeight * 0.8;
+      if (want === visible) return;
+      visible = want;
+      if (want) { btn.hidden = false; requestAnimationFrame(function () { btn.classList.add('show'); }); }
+      else { btn.classList.remove('show'); setTimeout(function () { if (!visible) btn.hidden = true; }, 220); }
+    }
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    btn.addEventListener('click', function () {
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+    });
+  })();
 
   // ------------------------------------------------------------ start
   $('appVersion').textContent = APP_VERSION;
