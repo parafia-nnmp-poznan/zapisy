@@ -424,6 +424,8 @@ select, input[type="search"], .dialog input[type="text"], .dialog input[type="te
 .slot.is-taken .name { color: var(--muted); }
 .state { color: var(--muted); font-size: 14px; font-weight: 600; }
 .slot.is-free { border: 2px dashed var(--ok-line); border-left: 5px solid var(--ok); background: var(--ok-soft); padding: 8px 10px 8px 10px; }
+.slot.is-closed { border: 1px solid var(--border); border-left: 5px solid var(--muted); background: var(--surface); opacity: .85; }
+.slot.is-closed .role { font-size: 17px; }
 .slot.is-free .role { font-size: 17px; }
 .free { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; padding: 1px 10px; border-radius: 999px; background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); font-weight: 700; font-size: 14px; }
 .slot.is-mine { background: var(--mine-bg); border-left: 5px solid var(--mine-line); }

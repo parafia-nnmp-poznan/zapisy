@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var APP_VERSION = '4.0';
+  var APP_VERSION = '4.1';
   var CONFIG = window.ZAPISY_CONFIG || {};
   var POLL_MS = (CONFIG.POLL_SECONDS || 60) * 1000;
   var TIMEOUT_MS = (CONFIG.REQUEST_TIMEOUT_SECONDS || 40) * 1000;
@@ -477,6 +477,13 @@
     return '';
   }
 
+  // Sign-ups close shortly before a mass (the server enforces it; the sacristy is exempt). The server's clock is used, not the phone's.
+  function signupClosed(mass) {
+    if (!mass.closesAt) return !!mass.closed;
+    var skew = (data && data.now) ? data.now - updatedAt : 0;
+    return Date.now() + skew >= mass.closesAt;
+  }
+
   function renderMass(mass, slots, sacristy, highlight) {
     var where = mass.weekday + ' ' + formatDate(mass.date) + ' godz. ' + mass.time;
     var card = el('div', 'card');
@@ -496,7 +503,9 @@
     card.appendChild(occ);
 
     // One role per person per mass: once the visitor has a role here, the other free roles are switched off.
+    var closed = !sacristy && signupClosed(mass);
     var myRole = sacristy ? '' : roleOfVisitor(mass);
+    if (closed) card.appendChild(el('p', 'has-role closed-note', 'Zapisy na tę Mszę są zamknięte (na ' + ((data && data.closeMinutes) || 15) + ' minut przed jej rozpoczęciem). Jeśli możesz pomóc, zgłoś się do zakrystii.'));
     if (myRole) card.appendChild(el('p', 'has-role', 'Masz już posługę na tej Mszy: ' + myRole + '. Na jednej Mszy można pełnić tylko jedną.'));
 
     slots.forEach(function (slot) {
@@ -506,6 +515,12 @@
       row.appendChild(info);
 
       if (!slot.taken) {
+        if (closed) {
+          row.appendChild(el('span', 'state', 'Zamknięte'));
+          row.className = row.className.replace('is-free', 'is-closed');
+          card.appendChild(row);
+          return;
+        }
         info.appendChild(el('span', 'free', '＋ Wolne'));
         var signup = el('button', 'btn primary', 'Zapisz się');
         signup.type = 'button';
